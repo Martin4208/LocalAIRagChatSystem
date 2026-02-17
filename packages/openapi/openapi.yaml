@@ -1,0 +1,1833 @@
+openapi: 3.0.3
+info:
+  title: Nexus API
+  description: Local-first AI document analysis and knowledge graph platform
+  version: 1.0.0
+
+servers:
+  - url: http://localhost:8080/api/v1
+    description: local development environment
+
+paths:
+  /health:
+    get:
+      summary: API health check
+      operationId: healthCheck
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+
+  /workspaces:
+    get:
+      summary: List all workspaces
+      tags: [workspaces]
+      operationId: listWorkspaces
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  workspaces:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Workspace'
+
+    post:
+      summary: Create a new workspace
+      tags: [workspaces]
+      operationId: createWorkspace
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name:
+                  type: string
+                description:
+                  type: string
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Workspace'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /workspaces/{workspaceId}:
+    parameters:
+      - name: workspaceId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    get:
+      summary: Get workspace by ID
+      tags: [workspaces]
+      operationId: getWorkspace
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Workspace'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    patch:
+      summary: Update workspace
+      tags: [workspaces]
+      operationId: updateWorkspace
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                description:
+                  type: string
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Workspace'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      summary: Delete workspace
+      tags: [workspaces]
+      operationId: deleteWorkspace
+      responses:
+        '204':
+          description: No Content
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /workspaces/{workspaceId}/files:
+    parameters:
+      - name: workspaceId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    get:
+      summary: List files in workspace
+      tags: [files]
+      operationId: listFiles
+      parameters:
+        - name: directoryId
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+          description: Filter by directory ID
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 50
+            minimum: 1
+            maximum: 100
+        - name: offset
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 0
+            minimum: 0
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FileListResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /workspaces/{workspaceId}/files/upload:
+    parameters:
+      - name: workspaceId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    post:
+      summary: Upload a file
+      tags: [files]
+      operationId: uploadFile
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: The file to upload
+                directoryId:
+                  type: string
+                  format: uuid
+                  nullable: true
+                  description: Target directory (optional)
+                tags:
+                  type: array
+                  items:
+                    type: string
+                  description: File tags (optional)
+      responses:
+        '201':
+          description: File uploaded successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FileUploadResponse'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /workspaces/{workspaceId}/files/{fileId}:
+    parameters:
+      - name: workspaceId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: fileId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    get:
+      summary: Get file metadata
+      tags: [files]
+      operationId: getFile
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FileMetadata'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      summary: Delete a file
+      tags: [files]
+      operationId: deleteFile
+      responses:
+        '204':
+          description: No Content
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /workspaces/{workspaceId}/files/{fileId}/download:
+    parameters:
+      - name: workspaceId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: fileId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    get:
+      summary: Download file content
+      tags: [files]
+      operationId: downloadFile
+      responses:
+        '200':
+          description: File content
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /workspaces/{workspaceId}/documents/{documentId}/process:
+    parameters: 
+      - name: workspaceId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: documentId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    post:
+      summary: Start document processing
+      operationId: processDocument
+      tags:
+        - documents
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                chunk_size:
+                  type: integer
+                  default: 500
+                  minimum: 100
+                  maximum: 2000
+                chunk_overlap:
+                  type: integer
+                  default: 50
+                  minimum: 0
+                  maximum: 500
+                force_reprocess:
+                  type: boolean
+                  default: false
+      responses:
+        '202':
+          description: Processing started
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [processing]
+                  message:
+                    type: string
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Document is already being processed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /workspaces/{workspaceId}/documents/{documentId}/status:
+    parameters: 
+      - name: workspaceId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: documentId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      summary: Get document processing status
+      operationId: getDocumentStatus
+      tags:
+        - documents
+      responses:
+        '200':
+          description: Processing status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [uploaded, processing, processed, failed]
+                  progress:
+                    type: object
+                    nullable: true
+                    properties:
+                      current_step: 
+                        type: string
+                      percentage: 
+                        type: integer
+                      chunks_created: 
+                        type: integer
+                  error:
+                    type: object
+                    nullable: true
+                    properties:
+                      message:
+                        type: string
+                      code:
+                        type: string
+                  processed_at:
+                    type: string
+                    format: date-time
+                    nullable: true
+        '404': 
+          $ref: '#/components/responses/NotFound'
+        '500': 
+          $ref: '#/components/responses/InternalServerError'
+
+  /workspaces/{workspaceId}/documents/{documentId}/chunks:
+    parameters:
+      - name: workspaceId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: documentId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: page
+        in: query
+        schema:
+          type: integer
+          default: 1
+          minimum: 1
+      - name: limit
+        in: query
+        schema:
+          type: integer
+          default: 20
+          minimum: 1
+          maximum: 100
+    get:
+      summary: Get document chunks
+      operationId: getDocumentChunks
+      tags:
+        - documents
+      responses:
+        '200':
+          description: List of chunks
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  chunks:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          format: uuid
+                        chunk_index:
+                          type: integer
+                        content:
+                          type: string
+                        created_at:
+                          type: string
+                          format: date-time
+                  total:
+                    type: integer
+                  page:
+                    type: integer
+                  limit:
+                    type: integer
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /workspaces/{workspaceId}/search:
+    parameters:
+      - name: workspaceId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    post:
+      summary: RAG search
+      operationId: searchWorkspace
+      tags:
+        - search
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [query]
+              properties: 
+                query:
+                  type: string
+                  example: "機械学習について教えて"
+                  minLength: 1
+                  maxLength: 1000
+                top_k:
+                  type: integer
+                  default: 5
+                  minimum: 1
+                  maximum: 20
+      responses:
+        '200':
+          description: Search results with generated answer
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [answer, sources]
+                properties:
+                  answer:
+                    type: string
+                    description: AI-generated answer based on retrieved context
+                  sources:
+                    type: array
+                    description: Source chunks used for answer generation
+                    items:
+                      type: object
+                      required: [document_id, chunk_index, content, score]
+                      properties:
+                        document_id:
+                          type: string
+                          format: uuid
+                        chunk_index:
+                          type: integer
+                        content: 
+                          type: string
+                        score:
+                          type: number
+                          format: float
+                          description: Similarity score from vector search
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /workspaces/{workspaceId}/chats:
+    parameters:
+      - name: workspaceId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+        description: Workspace ID
+
+    get:
+      summary: List all chats in workspace
+      operationId: listChats
+      tags: [chats]
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+            minimum: 1
+            maximum: 100
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+            minimum: 0
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [chats, total]
+                properties:
+                  chats:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Chat'
+                  total:
+                    type: integer
+                    description: Total number of chats
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    post:
+      summary: Create a new chat
+      operationId: createChat
+      tags: [chats]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [title]
+              properties:
+                title:
+                  type: string
+                  minLength: 1
+                  maxLength: 255
+                  description: Chat title (user-defined or auto-generated)
+                filter_config:
+                  $ref: '#/components/schemas/FilterConfig'
+      responses:
+        '201':
+          description: Chat created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Chat'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /workspaces/{workspaceId}/chats/{chatId}:
+    parameters:
+      - name: workspaceId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: chatId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    get:
+      summary: Get chat details with message history
+      operationId: getChat
+      tags: [chats]
+      parameters:
+        - name: message_limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+            minimum: 1
+            maximum: 100
+          description: Number of recent messages to return
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [chat, messages]
+                properties:
+                  chat:
+                    $ref: '#/components/schemas/Chat'
+                  messages:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ChatMessage'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      summary: Delete a chat (soft delete)
+      operationId: deleteChat
+      tags: [chats]
+      responses:
+        '204':
+          description: No Content
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /workspaces/{workspaceId}/chats/{chatId}/messages:
+    parameters:
+      - name: workspaceId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: chatId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    post:
+      summary: Send a message and get AI response
+      operationId: sendMessage
+      tags: [chats]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [content]
+              properties:
+                content:
+                  type: string
+                  minLength: 1
+                  maxLength: 10000
+                  description: User message content
+      responses:
+        '201':
+          description: Message sent and response generated
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [user_message, assistant_message]
+                properties:
+                  user_message:
+                    $ref: '#/components/schemas/ChatMessage'
+                  assistant_message:
+                    $ref: '#/components/schemas/ChatMessage'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  # ========================================
+  # Analysis Endpoints
+  # ========================================
+
+  /workspaces/{workspaceId}/analyses:
+    parameters:
+      - name: workspaceId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    get:
+      summary: List all analyses in workspace
+      operationId: listAnalyses
+      tags: [analyses]
+      parameters:
+        - name: status
+          in: query
+          schema:
+            $ref: '#/components/schemas/AnalysisStatus'
+          description: Filter by status
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+            minimum: 1
+            maximum: 100
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+            minimum: 0
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [analyses, total]
+                properties:
+                  analyses:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Analysis'
+                  total:
+                    type: integer
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    post:
+      summary: Create a new analysis job
+      operationId: createAnalysis
+      tags: [analyses]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [title, analysis_type]
+              properties:
+                title:
+                  type: string
+                  minLength: 1
+                  maxLength: 255
+                description:
+                  type: string
+                  maxLength: 1000
+                analysis_type:
+                  type: string
+                  enum:
+                    - summary
+                    - keyword_extraction
+                    - entity_recognition
+                    - graph_generation
+                    - sentiment_analysis
+                  description: Type of analysis to perform
+                config:
+                  type: object
+                  properties:
+                    document_ids:
+                      type: array
+                      items:
+                        type: string
+                        format: uuid
+                      description: Target documents (if empty, analyze all in workspace)
+                    max_keywords:
+                      type: integer
+                      minimum: 1
+                      maximum: 100
+                      default: 20
+                    language:
+                      type: string
+                      enum: [en, ja]
+                      default: ja
+      responses:
+        '202':
+          description: Analysis job created and queued
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Analysis'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /workspaces/{workspaceId}/analyses/{analysisId}:
+    parameters:
+      - name: workspaceId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: analysisId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    get:
+      summary: Get analysis status and metadata
+      operationId: getAnalysis
+      tags: [analyses]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Analysis'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      summary: Delete an analysis (soft delete)
+      operationId: deleteAnalysis
+      tags: [analyses]
+      responses:
+        '204':
+          description: No Content
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /workspaces/{workspaceId}/analyses/{analysisId}/results:
+    parameters:
+      - name: workspaceId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: analysisId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    get:
+      summary: Get analysis results
+      operationId: getAnalysisResults
+      tags: [analyses]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [results]
+                properties:
+                  results:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AnalysisResult'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Analysis not completed yet
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /workspaces/{workspaceId}/chats/{chatId}/sources:
+    parameters:
+      - name: workspaceId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: chatId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    
+    get:
+      summary: Get sources used in chat messages
+      operationId: getChatSources
+      tags: [chats]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SourcesResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ========================================
+  # Graph CRUD Operations
+  # ========================================
+  /workspaces/{workspace_id}/graphs:
+    get:
+      summary: List all graphs in workspace
+      operationId: listGraphs
+      tags:
+        - graph
+      parameters:
+        - name: workspace_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: List of graphs
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - graphs
+                properties:
+                  graphs:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/GraphListItem'
+        '404':
+          description: Workspace not found
+        '500':
+          description: Internal server error
+
+    post:
+      summary: Create a new graph
+      operationId: createGraph
+      tags:
+        - graph
+      parameters:
+        - name: workspace_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateGraphRequest'
+      responses:
+        '201':
+          description: Graph created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Graph'
+        '400':
+          description: Invalid request
+        '404':
+          description: Workspace not found
+        '500':
+          description: Internal server error
+
+  /workspaces/{workspace_id}/graphs/{graph_id}:
+    get:
+      summary: Get complete graph with nodes and edges
+      operationId: getGraph
+      tags:
+        - graph
+      parameters:
+        - name: workspace_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: graph_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Complete graph data with nodes and edges
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Graph'
+        '404':
+          description: Graph or workspace not found
+        '500':
+          description: Internal server error
+
+    put:
+      summary: Update graph metadata
+      operationId: updateGraph
+      tags:
+        - graph
+      parameters:
+        - name: workspace_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: graph_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateGraphRequest'
+      responses:
+        '200':
+          description: Graph updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Graph'
+        '400':
+          description: Invalid request
+        '404':
+          description: Graph not found
+        '500':
+          description: Internal server error
+
+    delete:
+      summary: Delete a graph
+      operationId: deleteGraph
+      tags:
+        - graph
+      parameters:
+        - name: workspace_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: graph_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Graph deleted successfully
+        '404':
+          description: Graph not found
+        '500':
+          description: Internal server error
+
+  /workspaces/{workspace_id}/graphs/{graph_id}/nodes:
+    get:
+      summary: Get nodes only (lightweight)
+      operationId: getGraphNodes
+      tags:
+        - graph
+      parameters:
+        - name: workspace_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: graph_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: List of graph nodes
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - nodes
+                properties:
+                  nodes:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/GraphNode'
+        '404':
+          description: Graph not found
+        '500':
+          description: Internal server error
+
+  /workspaces/{workspace_id}/graphs/{graph_id}/edges:
+    get:
+      summary: Get edges only (lightweight)
+      operationId: getGraphEdges
+      tags:
+        - graph
+      parameters:
+        - name: workspace_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: graph_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: List of graph edges
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - edges
+                properties:
+                  edges:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/GraphEdge'
+        '404':
+          description: Graph not found
+        '500':
+          description: Internal server error
+
+components:
+  schemas:
+    Workspace:
+      type: object
+      required: [id, name, created_at, updated_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        settings:
+          type: object
+          nullable: true
+          additionalProperties: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    FileMetadata:
+      type: object
+      required: [id, fileName, mimeType, sizeBytes, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        fileName:
+          type: string
+          description: Original filename
+        mimeType:
+          type: string
+          description: MIME type (e.g., application/pdf)
+        sizeBytes:
+          type: integer
+          format: int64
+          description: File size in bytes
+        sha256Hash:
+          type: string
+          description: SHA256 hash of file content
+        createdAt:
+          type: string
+          format: date-time
+        status:
+          type: string
+          enum:
+            - uploaded
+            - processing
+            - processed
+            - failed
+          description: Document processing status
+        tags:
+          type: array
+          items:
+            type: string
+          nullable: true
+          description: File tags for categorization
+
+    FileListResponse:
+      type: object
+      required: [files, total]
+      properties:
+        files:
+          type: array
+          items:
+            $ref: '#/components/schemas/FileMetadata'
+        total:
+          type: integer
+          description: Total number of files matching the query
+
+    FileUploadResponse:
+      type: object
+      required: [id, fileName, mimeType, sizeBytes, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        fileName:
+          type: string
+        mimeType:
+          type: string
+        sizeBytes:
+          type: integer
+          format: int64
+        sha256Hash:
+          type: string
+          description: SHA256 hash for deduplication
+        createdAt:
+          type: string
+          format: date-time
+    
+    # ========================================
+    # Chat Schemas
+    # ========================================
+
+    Chat:
+      type: object
+      required: [id, workspace_id, title, created_at, updated_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        workspace_id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        filter_config:
+          $ref: '#/components/schemas/FilterConfig'
+        message_count:
+          type: integer
+          minimum: 0
+          description: Total number of messages in this chat
+        last_message_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: Timestamp of the last message
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    ChatMessage:
+      type: object
+      required: [id, chat_id, role, content, message_index, created_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        chat_id:
+          type: string
+          format: uuid
+        role:
+          type: string
+          enum: [user, assistant, system]
+        content:
+          type: string
+        message_index:
+          type: integer
+          minimum: 0
+          description: Sequential index within the chat (0-based)
+        document_refs:
+          type: array
+          items:
+            $ref: '#/components/schemas/DocumentReference'
+          description: References to source documents (RAG citations)
+        created_at:
+          type: string
+          format: date-time
+
+    DocumentReference:
+      type: object
+      required: [document_id, chunk_index, score]
+      properties:
+        document_id:
+          type: string
+          format: uuid
+        document_name:
+          type: string
+        chunk_index:
+          type: integer
+          minimum: 0
+        # ページ番号を追加：フロントのソースパネルで「P.3」表示に使う
+        page_number:
+          type: integer
+          minimum: 1
+          nullable: true
+          description: Page number in the source document (1-based)
+        score:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 1
+          description: Relevance score (0.0 - 1.0)
+        # content_preview は廃止せず残すが、上限を緩和しない
+        # 全文表示は GET /documents/{id}/pages/{page} で別途取得する設計（関心の分離）
+        content_preview:
+          type: string
+          maxLength: 200
+          description: Short preview of the chunk content
+
+    ChunkReference:
+      type: object
+      required:
+        - chunk_index
+        - score
+        - content_preview
+      properties:
+        chunk_index:
+          type: integer
+          minimum: 0
+        score:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 1
+        content_preview:
+          type: string
+          maxLength: 200
+        relevance_score:
+          type: number
+          format: float
+          nullable: true
+    
+    SourceDocument:
+      type: object
+      required:
+        - document_id
+        - document_name
+        - mime_type
+        - chunks
+      properties:
+        document_id:
+          type: string
+          format: uuid
+        document_name:
+          type: string
+        mime_type:
+          type: string
+        size_bytes:
+          type: integer
+          format: int64
+        # ページ単位のグルーピング用：このドキュメント内で参照されたページ番号一覧
+        referenced_pages:
+          type: array
+          items:
+            type: integer
+          description: Page numbers referenced in this document (deduplicated, sorted)
+        chunks:
+          type: array
+          items:
+            type: object
+            required: [chunk_index, score, content_preview]
+            properties:
+              chunk_index:
+                type: integer
+              page_number:
+                type: integer
+                minimum: 1
+                nullable: true
+                description: Page number this chunk belongs to (1-based)
+              score:
+                type: number
+                format: float
+              content_preview:
+                type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    
+    SourcesResponse:
+      type: object
+      required:
+        - sources
+        - total_documents
+        - total_chunks
+      properties:
+        sources:
+          type: array
+          items:
+            $ref: '#/components/schemas/SourceDocument'
+        total_documents:
+          type: integer
+        total_chunks:
+          type: integer
+
+    FilterConfig:
+      type: object
+      properties:
+        document_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+          description: Specific documents to search (empty = all)
+        directory_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+          description: Search within specific directories
+        tags:
+          type: array
+          items:
+            type: string
+          description: Filter by document tags
+      description: Configuration for filtering RAG search scope
+
+    # ========================================
+    # Analysis Schemas
+    # ========================================
+
+    Analysis:
+      type: object
+      required: [id, workspace_id, title, analysis_type, status, created_at, updated_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        workspace_id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        description:
+          type: string
+          nullable: true
+        analysis_type:
+          type: string
+          enum:
+            - summary
+            - keyword_extraction
+            - entity_recognition
+            - graph_generation
+            - sentiment_analysis
+        status:
+          $ref: '#/components/schemas/AnalysisStatus'
+        config:
+          type: object
+          nullable: true
+          additionalProperties: true
+          description: Analysis-specific configuration
+        error_message:
+          type: string
+          nullable: true
+          description: Error details if status is 'failed'
+        started_at:
+          type: string
+          format: date-time
+          nullable: true
+        completed_at:
+          type: string
+          format: date-time
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    AnalysisStatus:
+      type: string
+      enum:
+        - pending
+        - running
+        - completed
+        - failed
+      description: Analysis job status
+
+    AnalysisResult:
+      type: object
+      required: [id, analysis_id, result_type, created_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        analysis_id:
+          type: string
+          format: uuid
+        result_type:
+          type: string
+          enum:
+            - text
+            - json
+            - image
+            - graph
+          description: Type of result content
+        content:
+          type: object
+          additionalProperties: true
+          description: Result data (structure depends on result_type)
+        image_url:
+          type: string
+          format: uri
+          nullable: true
+          description: URL to generated image (if result_type=image)
+        metadata:
+          type: object
+          nullable: true
+          additionalProperties: true
+          description: Additional metadata about the result
+        created_at:
+          type: string
+          format: date-time
+
+    # ========================================
+    # Graph Schemas
+    # ========================================
+    GraphListItem:
+      type: object
+      required:
+        - id
+        - workspace_id
+        - title
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: "123e4567-e89b-12d3-a456-426614174000"
+        workspace_id:
+          type: string
+          format: uuid
+        title:
+          type: string
+          example: "2024年度予算分析"
+          minLength: 1
+          maxLength: 255
+        graph_type:
+          type: string
+          nullable: true
+          example: "knowledge_graph"
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    Graph:
+      allOf:
+        - $ref: '#/components/schemas/GraphListItem'
+        - type: object
+          required:
+            - nodes
+            - edges
+          properties:
+            layout_config:
+              type: object
+              nullable: true
+              additionalProperties: true
+              description: "Force-graph layout configuration (physics, zoom, etc.)"
+            nodes:
+              type: array
+              items:
+                $ref: '#/components/schemas/GraphNode'
+            edges:
+              type: array
+              items:
+                $ref: '#/components/schemas/GraphEdge'
+
+    GraphNode:
+      type: object
+      required:
+        - id
+        - graph_id
+        - label
+        - node_type
+      properties:
+        id:
+          type: string
+          format: uuid
+        graph_id:
+          type: string
+          format: uuid
+        label:
+          type: string
+          example: "Alice Smith"
+          description: "Display name of the node"
+        node_type:
+          type: string
+          example: "person"
+          description: "Type of node: person, document, concept, etc."
+        source_type:
+          type: string
+          nullable: true
+          example: "document_chunk"
+          description: "Where this node came from"
+        source_id:
+          type: string
+          format: uuid
+          nullable: true
+          description: "Reference to source entity (e.g., document_chunks.id)"
+        position:
+          type: object
+          nullable: true
+          properties:
+            x:
+              type: number
+            y:
+              type: number
+            z:
+              type: number
+              nullable: true
+          description: "3D position for force-graph"
+        style:
+          type: object
+          nullable: true
+          additionalProperties: true
+          description: "Visual styling (color, size, shape, etc.)"
+        metadata:
+          type: object
+          nullable: true
+          additionalProperties: true
+          description: "Additional custom data"
+        created_at:
+          type: string
+          format: date-time
+
+    GraphEdge:
+      type: object
+      required:
+        - id
+        - graph_id
+        - from_node_id
+        - to_node_id
+        - edge_type
+      properties:
+        id:
+          type: string
+          format: uuid
+        graph_id:
+          type: string
+          format: uuid
+        from_node_id:
+          type: string
+          format: uuid
+          description: "Source node ID"
+        to_node_id:
+          type: string
+          format: uuid
+          description: "Target node ID"
+        edge_type:
+          type: string
+          example: "works_for"
+          description: "Type of relationship"
+        is_directed:
+          type: boolean
+          default: true
+          description: "Whether the edge has direction (arrow)"
+        weight:
+          type: number
+          format: float
+          nullable: true
+          example: 0.85
+          description: "Relationship strength (0.0 - 1.0)"
+        confidence:
+          type: number
+          format: float
+          nullable: true
+          example: 0.92
+          description: "AI confidence score"
+        style:
+          type: object
+          nullable: true
+          additionalProperties: true
+          description: "Visual styling (color, width, etc.)"
+        metadata:
+          type: object
+          nullable: true
+          additionalProperties: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    CreateGraphRequest:
+      type: object
+      required:
+        - title
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 255
+          example: "2024年度予算分析"
+        graph_type:
+          type: string
+          nullable: true
+          example: "knowledge_graph"
+
+    UpdateGraphRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 255
+        layout_config:
+          type: object
+          nullable: true
+          additionalProperties: true
+
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code: 
+              type: string
+            message: 
+              type: string
+            details: 
+              type: object  
+            timestamp: 
+              type: string
+            request_id: 
+              type: string  
+
+  responses:
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    BadRequest:
+      description: Bad request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    InternalServerError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+

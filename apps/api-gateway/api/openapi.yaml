@@ -1,0 +1,226 @@
+paths:
+  # ドキュメントのアップロード
+  /workspaces/{workspaceId}/documents:
+    post:
+      summary: ドキュメントをアップロード
+      operationId: uploadDocument
+      tags: [documents]
+      parameters:
+        - $ref: '#/components/parameters/WorkspaceId'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: アップロードするファイル
+                name:
+                  type: string
+                  description: ドキュメント名（省略時はファイル名）
+                directory_id:
+                  type: string
+                  format: uuid
+                  description: 配置先ディレクトリID
+                tags:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        '201':
+          description: アップロード成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Document'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '413':
+          description: ファイルサイズが大きすぎます
+    
+    # ドキュメント一覧取得
+    get:
+      summary: ドキュメント一覧を取得
+      operationId: listDocuments
+      tags: [documents]
+      parameters:
+        - $ref: '#/components/parameters/WorkspaceId'
+        - name: directory_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        '200':
+          description: ドキュメント一覧
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  documents:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Document'
+                  total:
+                    type: integer
+
+  # ドキュメント詳細取得
+  /workspaces/{workspaceId}/documents/{documentId}:
+    get:
+      summary: ドキュメント詳細を取得
+      operationId: getDocument
+      tags: [documents]
+      parameters:
+        - $ref: '#/components/parameters/WorkspaceId'
+        - name: documentId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: ドキュメント詳細
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentDetail'
+    
+    delete:
+      summary: ドキュメントを削除
+      operationId: deleteDocument
+      tags: [documents]
+      parameters:
+        - $ref: '#/components/parameters/WorkspaceId'
+        - name: documentId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: 削除成功
+
+  # ファイルダウンロード
+  /files/{fileId}/download:
+    get:
+      summary: ファイルをダウンロード
+      operationId: downloadFile
+      tags: [files]
+      parameters:
+        - name: fileId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: ファイル本体
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+
+components:
+  parameters:
+    WorkspaceId:
+      name: workspaceId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+  
+  schemas:
+    Document:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        workspace_id:
+          type: string
+          format: uuid
+        directory_id:
+          type: string
+          format: uuid
+          nullable: true
+        file_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+        status:
+          type: string
+          enum: [uploaded, processing, ready, error]
+        file_size:
+          type: integer
+          format: int64
+        mime_type:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    
+    DocumentDetail:
+      allOf:
+        - $ref: '#/components/schemas/Document'
+        - type: object
+          properties:
+            file:
+              type: object
+              properties:
+                sha256_hash:
+                  type: string
+                minio_bucket:
+                  type: string
+                minio_key:
+                  type: string
+  
+  responses:
+    BadRequest:
+      description: リクエストが不正です
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+    
+    NotFound:
+      description: リソースが見つかりません
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string

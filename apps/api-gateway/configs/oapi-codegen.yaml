@@ -1,0 +1,8 @@
+package: api
+
+generate:
+  - types
+  - chi-server
+  - embedded-spec
+
+output: internal/api/generated.go

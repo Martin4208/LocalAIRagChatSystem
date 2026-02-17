@@ -1,0 +1,35 @@
+syntax = "proto3";
+
+package nexus.v1;
+
+option go_package = "github.com/Martin4208/nexus/gen/go/nexus/v1;nexusv1";
+
+// サービス全体の定義
+service NexusService {
+    // 1. ヘルスチェック：サーバーが活きているか確認
+    rpc Ping (PingRequest) returns (PingResponse) {}
+
+    // 2. ファイルアップロード情報の登録　(Presigned URL発行などを見据えて)
+    rpc RegisterFile (RegisterFileRequest) returns (RegisterFileResponse) {}
+}
+
+// --- メッセージ型定義 ---
+message PingRequest {
+    string message = 1;
+}
+
+message PingResponse {
+    string message = 1;
+    string server_time = 2;
+}
+
+message RegisterFileRequest {
+    string filename = 1;
+    int64 size = 2;
+    string content_type = 3; // "application/pdf", "video/mp4" etc.
+}
+
+message RegisterFileResponse {
+    string file_id = 1; // UUID
+    string upload_url = 2; // ここにPUTしてね、というURL
+}

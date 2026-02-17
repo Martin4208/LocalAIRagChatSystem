@@ -1,0 +1,40 @@
+# .gitignore
+
+# 開発ツールの設定や一時ファイル
+.vscode/
+.idea/
+.DS_Store
+
+# 依存関係
+node_modules/
+__pycache__/
+*.venv/
+vendor/
+.next/
+
+# ビルド成果物
+dist/
+build/
+bin/
+
+# ローカルの環境変数やデータ（絶対にコミットしない！）
+.env
+.local_data/
+postgres-data/
+minio-data/
+
+# Python
+venv/
+__pycache__/
+*.pyc
+.env
+
+# AI Models & Cache
+models_cache/
+*.safetensors
+*.bin
+*.gguf
+
+
+# その他
+*.log

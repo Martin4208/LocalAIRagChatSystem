@@ -1,0 +1,44 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --radius: 0.5rem;
+
+    /* Base - 背景と基本テキスト */
+    --background: 0 0% 10%; /* 黒めのグレー背景 */
+    --foreground: 0 0% 98%; /* ほぼ白のテキスト */
+
+    /* Card / Popover - UIコンポーネント */
+    --card: 0 0% 14%; /* 背景より少し明るいグレー */
+    --card-foreground: 0 0% 98%;
+    --popover: 0 0% 14%;
+    --popover-foreground: 0 0% 98%;
+
+    /* Brand - GitHub風のブルー */
+    --primary: 225 70% 58%; /* GitHub Blue (#0969DA相当) */
+    --primary-foreground: 0 0% 100%; /* ブルー上の白文字 */
+
+    /* Neutral - サイドバーやセカンダリUI */
+    --secondary: 0 0% 18%; /* カードより少し明るい */
+    --secondary-foreground: 0 0% 98%;
+    --muted: 0 0% 25%; /* さらに明るいグレー（無効化要素など） */
+    --muted-foreground: 0 0% 64%; /* 控えめなテキスト */
+    --accent: 0 0% 18%; /* セカンダリと同じ */
+    --accent-foreground: 0 0% 98%;
+
+    /* Status - エラー表示 */
+    --destructive: 0 84% 60%; /* 赤 */
+    --destructive-foreground: 0 0% 100%;
+
+    /* UI - ボーダーとフォーカスリング */
+    --border: 0 0% 25%; /* 控えめなボーダー */
+    --ring: 212 92% 45%; /* フォーカス時はprimaryと同じブルー */
+  }
+
+  body {
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
+  }
+}

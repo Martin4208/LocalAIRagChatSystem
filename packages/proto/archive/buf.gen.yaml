@@ -1,0 +1,26 @@
+version: v2
+managed:
+  enabled: true
+  override:
+    - file_option: go_package_prefix
+      value: github.com/Martin4208/Nexus/gen/proto/go
+plugins:
+  # Go - Connect RPC
+  - remote: buf.build/connectrpc/go
+    out: ../../gen/proto/go
+    opt: paths=source_relative
+  
+  # TypeScript - Connect-ES
+  - remote: buf.build/connectrpc/es
+    out: ../../gen/proto/ts
+    opt:
+      - target=ts
+      - import_extension=none
+  
+  # Python - Protocol Buffers
+  - remote: buf.build/protocolbuffers/python
+    out: ../../gen/proto/python
+  
+  # Python - gRPC (optを完全に削除)
+  - remote: buf.build/grpc/python
+    out: ../../gen/proto/python

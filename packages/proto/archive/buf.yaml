@@ -1,0 +1,13 @@
+version: v2
+modules:
+  - path: nexus
+    name: buf.build/martin4208/nexus
+lint:
+  use:
+    - STANDARD
+  except:
+    - PACKAGE_VERSION_SUFFIX
+    - PACKAGE_DIRECTORY_MATCH
+breaking:
+  use:
+    - FILE

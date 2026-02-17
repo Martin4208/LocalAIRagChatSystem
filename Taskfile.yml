@@ -1,0 +1,113 @@
+version: '3'
+
+tasks:
+  # --- Infrastructure ---
+  up: 
+    desc: ローカルインフラ（DBなど）を起動します
+    cmds:
+      - docker-compose -f infra/local/docker-compose.yml up -d
+      - echo Infrastructure is UP
+      - echo MinIO Console http://localhost:9001
+      - echo Qdrant API http://localhost:6333  
+  down:
+    desc: ローカルインフラを停止します
+    cmds:
+      - docker compose -f infra/local/docker-compose.yml down
+      - echo 💤 Infrastructure is DOWN.
+  
+  logs:
+    desc: インフラのログを表示します
+    cmds:
+      - docker compose -f infra/local/docker-compose.yml logs -f
+
+  # --- Code Generation ---
+  generate-api:
+    desc: OpenAPI から Go コードを生成
+    dir: apps/api-gateway
+    cmds:
+      - oapi-codegen -config configs/oapi-codegen.yaml ../../packages/openapi/openapi.yaml  
+      - echo ✅ API code generated
+
+  generate-sqlc:
+    desc: SQLC でクエリコードを生成
+    dir: apps/api-gateway
+    cmds:
+      - sqlc generate
+      - echo ✅ SQLC code generated
+
+  generate:
+    desc: 全てのコード生成を実行
+    cmds:
+      - task: generate-api
+      - task: generate-sqlc
+
+  # --- Setup ---
+  init-go:
+    desc: Goモジュールの初期化（初回のみ実行）
+    dir: apps/api-gateway
+    cmds:
+      - go mod init nexus/api-gateway
+      - echo ✅ Go module initialized
+
+  # --- Frontend ---
+  dev-web:
+    desc: Next.js（フロントエンド）を起動します
+    dir: apps/web/nexus
+    cmds:
+      - npm run dev
+
+  # --- Backend ---
+  dev-back:
+    desc: Go（バックエンド）を起動します
+    dir: apps/api-gateway
+    cmds:
+      - go run cmd/server/main.go
+
+  # --- All ---
+  dev:
+    desc: インフラとフロントエンドとバックエンドを同時に起動します
+    deps: 
+      - up # 先にdockerが立ち上がるように依存関係を設定
+      - dev-back
+      - dev-web
+    parallel: true
+
+  ai:
+    desc: AIの立ち上げ
+    dir: apps/ai-worker
+    cmds:
+      - uvicorn main:app --reload --host 0.0.0.0 --port 8001
+
+  # --- Status Check ---
+  status:
+    desc: コンテナの状態確認
+    cmds:
+      - docker compose -f infra/local/docker-compose.yml ps
+
+# --- Database Migration ---
+  migrate:up:
+    desc: マイグレーションを適用
+    dir: apps/api-gateway/migrations
+    cmds:
+      - goose postgres "host=localhost port=5432 user=user password=password dbname=nexus sslmode=disable" up
+      - echo ✅ Migration completed
+
+  migrate:down:
+    desc: マイグレーションを1つ戻す
+    dir: apps/api-gateway/migrations
+    cmds:
+      - goose postgres "host=localhost port=5432 user=user password=password dbname=nexus sslmode=disable" down
+      - echo ⏪ Rolled back 1 migration
+
+  migrate:status:
+    desc: マイグレーション状態確認
+    dir: apps/api-gateway/migrations
+    cmds:
+      - goose postgres "host=localhost port=5432 user=user password=password dbname=nexus sslmode=disable" status
+
+  migrate:reset:
+    desc: 全マイグレーションをリセット
+    dir: apps/api-gateway/migrations
+    cmds:
+      - goose postgres "host=localhost port=5432 user=user password=password dbname=nexus sslmode=disable" reset
+      - echo ⚠️  All migrations rolled back

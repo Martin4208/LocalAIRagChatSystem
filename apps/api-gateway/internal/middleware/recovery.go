@@ -1,0 +1,34 @@
+// パニックリカバリー
+package middleware
+
+import (
+	"encoding/json"
+	"log"
+	"net/http"
+	"runtime/debug"
+)
+
+// Recovery recovers from panics and returns a 500 Internal Server Error
+func Recovery(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		defer func() {
+			if err := recover(); err != nil {
+				// Log the panic with stack trace
+				log.Printf("[PANIC] %v\n%s", err, debug.Stack())
+
+				// Return 500 Internal Server Error
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusInternalServerError)
+
+				response := map[string]interface{}{
+					"error":   "Internal Server Error",
+					"message": "An unexpected error occurred. Please try again later.",
+				}
+
+				json.NewEncoder(w).Encode(response)
+			}
+		}()
+
+		next.ServeHTTP(w, r)
+	})
+}

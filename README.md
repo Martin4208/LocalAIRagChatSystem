@@ -1,5 +1,5 @@
-Unfinished project
-This is connected to ollama, using phi3:mini. You can upload pdf or txt files and the RAG system will let phi3:mini to respond from the documents.
+## Unfinished project
+### This is connected to ollama, using phi3:mini. You can upload pdf or txt files and the RAG system will let phi3:mini to respond from the documents.
 
 
 Local Setup
